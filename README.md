@@ -1,5 +1,6 @@
 # Wordpress Favicon Setup
 ### Uploading and setting a favicon for your Wordpress website.
+### Note: This guide requires that you've already followed the [setup guide](https://github.com/bbcharlton/DWA/blob/master/setup.md)
 ___
 
 > ### 1. Create Or Find A Favicon
