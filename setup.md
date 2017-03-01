@@ -4,7 +4,9 @@ ___
 
 > ### 1. Creating Your Droplet
 
-Sign in to your Digital Ocean account and go to the Droplets page. Customize how you want your Droplet to be. Be sure to use **Ubuntu 14.04.5 x64** for this specific setup.
+I have created a super basic video explaining how to start up a Digital Ocean droplet, and going into detail for its features.
+[Droplet Creation Video](https://youtu.be/0H7_ndBH_xs)
+As mentioned in the video, be sure to use **Ubuntu 14.04.5 x64** for this specific setup.
 
 ___
 
