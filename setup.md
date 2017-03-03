@@ -1,4 +1,4 @@
-# Ubunutu 14.04/Wordpress Server Setup
+# Ubunutu 16.04/Wordpress Server Setup
 ### Using Digital Ocean to spin up an Ubuntu server using MariaDB and PHP for a Wordpress website.
 ___
 
@@ -85,7 +85,7 @@ Nginx alone can't run PHP files, so we'll need to install PHP and configure some
 
 <pre>
 
-sudo apt-get install php5-fpm php5-mysql
+sudo apt-get install php-fpm php-mysql
 
 </pre>
 
@@ -95,7 +95,7 @@ This installs all the required files and packages to use PHP on your server. Thi
 
 <pre>
 
-sudo nano /etc/php5/fpm/php.ini
+sudo nano /etc/php/7.0/fpm/php.ini
 
 </pre>
 
@@ -105,7 +105,7 @@ Open the php.ini file to access the php-fpm configuration. Use **Ctrl + W** and 
 
 <pre>
 
-sudo service php5-fpm restart
+sudo systemctl restart php7.0-fpm.service
 
 </pre>
 
@@ -127,7 +127,7 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
 
-    root /usr/share/nginx/html;
+    root /var/www/html;
     index index.php index.html index.htm index.nginx-debian.html;
 
     server_name localhost;
@@ -139,13 +139,13 @@ server {
     error_page 404 /404.html;
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
-        root /usr/share/nginx/html;
+        root /var/www/html;
     }
 
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:/var/run/php5-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
@@ -160,7 +160,7 @@ This allows Nginx to read PHP and process the files.
 
 <pre>
 
-sudo service nginx restart
+sudo systemctl restart nginx
 
 </pre>
 
@@ -176,27 +176,29 @@ We will be using MariaDB for our Wordpress database. MariaDB is a version of MyS
 
 <pre>
 
-sudo apt-get install mariadb-client mariadb-server
+sudo apt-get install mariadb-server
+sudo mysql_install_db
+sudo service mysql start
 
 </pre>
 
-You will then be prompted to reset the root user's password. The installation may take a while to complete.
+The installation may take a while to complete. After installation, start the Maria database.
 
 ##### Configure MariaDB
 
 <pre>
 
-mysql_secure_installation
+sudo mysql_secure_installation
 
 </pre>
 
-After running this command, press enter for the default password for MariaDB. Now you will be asked to reset the password again, input **n** for no. For the rest of the setup, answer each question with **y** for yes to finish your MariaDB configuration.
+After running this command, press enter for the default password for MariaDB. Now you will be asked to reset the password again, input **y** for yes and change the password. For the rest of the setup, answer each question with **y** for yes to finish your MariaDB configuration.
 
 ##### Login To MariaDB As Root
 
 <pre>
 
-mysql -u root -p
+sudo mysql -u root -p
 
 </pre>
 
@@ -220,7 +222,7 @@ create user <span style="color: red">username</span>@localhost identified by '<s
 
 </pre>
 
-Replace the pound symbols with the new user name you want to create for your newly created database. Replace the asterisks with a password for the user being created.
+This creates a new user for the database.
 
 ##### Grant New User Privileges
 
@@ -253,19 +255,19 @@ The final step is to now install Wordpress onto your server, then you should be 
 
 <pre>
 
-cd /usr/share/nginx/html
+cd /var/www/html
 sudo wget http://wordpress.org/latest.tar.gz
 sudo tar xzvf latest.tar.gz
 
 </pre>
 
-Download and extract the latest Wordpress version onto your server.
+Create the necessary directories for your Download and extract the latest Wordpress version onto your server.
 
 ##### Wordpress File Configuration Pt. 1
 
 <pre>
 
-cd /usr/share/nginx/html/wordpress
+cd /var/www/html/wordpress
 sudo cp wp-config-sample.php wp-config.php
 
 </pre>
@@ -286,7 +288,7 @@ Open the wp-config.php file. Replace **database\_name\_here** with your database
 
 <pre>
 
-sudo rsync -avP /usr/share/nginx/html/wordpress/ /usr/share/nginx/html/
+sudo rsync -avP /var/www/html/wordpress/ /var/www/html/
 
 </pre>
 
@@ -296,7 +298,7 @@ We will use rsync to move the files along with their privileges and ownership on
 
 <pre>
 
-sudo chown -R <span style="color: red">user</span>:www-data /usr/share/nginx/html/*
+sudo chown -R <span style="color: red">user</span>:www-data /var/www/html/*
 
 </pre>
 
@@ -306,7 +308,7 @@ Now you will have ownership over every Wordpress file!
 
 <pre>
 
-sudo mkdir /usr/share/nginx/html/wp-content/uploads
+sudo mkdir /var/www/html/wp-content/uploads
 
 </pre>
 
@@ -316,7 +318,7 @@ This directory will hold all files you'll ever upload, such as images or favicon
 
 <pre>
 
-sudo chown -R :www-data /usr/share/nginx/html/wp-content/uploads
+sudo chown -R :www-data /var/www/html/wp-content/uploads
 
 </pre>
 
@@ -327,8 +329,8 @@ This will allow the web server to create files and directories under this direct
 
 <pre>
 
-sudo service nginx restart
-sudo service php5-fpm restart
+sudo systemctl restart nginx
+sudo systemctl restart php7.0-fpm.service
 
 </pre>
 
