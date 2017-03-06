@@ -1,6 +1,7 @@
 # Githook Deployment
 ### Deploying files and testing them with Githooks.
 
+This guide requires that you have already finished the [setup guide](https://github.com/bbcharlton/DWA/blob/master/setup.md).
 ___
 
 > ### 1. Local Wordpress Setup
