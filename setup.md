@@ -1,125 +1,253 @@
-# Ubunutu 16.04/Wordpress Server Setup
-### Using Digital Ocean to spin up an Ubuntu server using MariaDB and PHP for a Wordpress website.
+# Ubunutu 16.04/Wordpress Ansible Automation
+### Using Digital Ocean to spin up an Ubuntu server using MariaDB and PHP for a Wordpress website through Ansible's automated playbooks.
 ___
 
-> ### 1. Creating Your Droplet
+> ### 1. Generate Your SSH Key
 
-Sign in to your Digital Ocean account and go to the Droplets page. Customize how you want your Droplet to be. Be sure to use **Ubuntu 16.04 x64** for this specific setup.
-
-___
-
-> ### 2. New User Setup
-
-It's recommended that you do not use the root user for anything other than creating a new user to work with.
-
-##### Reset Root's Password
-
-After your droplet has been created, click on it. Head over to the **Access** tab and click on the **Reset Root Password** button. An email will be sent to your inbox with a newly generated password. This process may take a while.
-
-##### SSH Into Your Server
+##### Create SSH Key
 
 <pre>
 
-ssh root@<span style="color: red">your-IP-address</span>
+cd ~/.ssh
+ssh-keygen -t rsa -b 4096 -C "<span style="color: red">your@emailaddress</span>" -f id_<span style="color: red">id-name
 
 </pre>
 
-You will then be prompted with a notification about the authenticity of the host. Accept the confirmation, then enter the root user's password.
-
-
-##### Add A New User
+On your local machine, change to your ssh directory and generate a new ssh key to use for your Digital Ocean server. It will then generate and ask you for a passphrase to remember. Give it a secure password and press enter. Get your public key using the following command:
 
 <pre>
 
-adduser <span style="color: red">user</span>
+cat id_<span style="color: red">id-name</span>.pub
 
 </pre>
 
-This will be the user you'll be using instead of root. Type in the necessary information prompted on the screen for your new user.
-
-##### Change The User's Group
-
-<pre>
-
-usermod -aG sudo <span style="color: red">user</span>
-
-</pre>
-
-This gives your newly created user the power to use sudo.
-
-##### Exit And Log Back In
-
-<pre>
-
-exit
-ssh <span style="color: red">user</span>@<span style="color: red">your-IP-address</span>
-
-</pre>
-
-Now you will never need to login as root anymore. For now on, you will only use this user account for your server.
+This outputs our public ssh key. Copy this key. We will need it for our Digital Ocean steps.
 
 ___
 
-> ### 3. Nginx Setup
+> ### 2. Creating Your Droplet With SSH
 
-Nginx allows us to be able to use PHP on our server, which Wordpress functionality relies on.
-
-##### Apt-Get And Install Nginx
-
-<pre>
-
-sudo apt-get update
-sudo apt-get install nginx
-
-</pre>
-
-This will make sure your server has all the proper files and packages, then install Nginx. This may take a while to finish. Once completed, you should now be able to access your default Nginx page on your server's IP. Do so by visiting **http://<span style="color: red">your-IP-address</span>**.
+Sign in to your Digital Ocean account and go to your settings page. Click on **Security** and click the **Add SSH Key** button. Paste in your copied public key and give it a unique name. Save and go to the Droplets page. Customize how you want your Droplet to be. Be sure to use **Ubuntu 16.04 x64** for this specific setup. For the SSH option, click on the SSH key name you just added to your profile, and create
 
 ___
 
-> ### 4. PHP Setup
+> ### 3. Install Ansible With Brew
 
-Nginx alone can't run PHP files, so we'll need to install PHP and configure some files to allow Wordpress to run its files.
+##### Install Brew
 
-##### Apt-Get And Install PHP
+You can use the following article on how to install [Brew](https://brew.sh/).
 
-<pre>
-
-sudo apt-get install php-fpm php-mysql
-
-</pre>
-
-This installs all the required files and packages to use PHP on your server. This may take a while to complete.
-
-##### Configure The PHP Processor
+##### Install Ansible
 
 <pre>
 
-sudo nano /etc/php/7.0/fpm/php.ini
+brew install ansible
 
 </pre>
 
-Open the php.ini file to access the php-fpm configuration. Use **Ctrl + W** and search for **;cgi.fix_pathinfo=1**. Replace that line with **cgi.fix_pathinfo=0**. Make sure you do not edit any other lines or you'll screw up a lot of stuff!
+This installs Ansible globally on our local machine, which allows us to use it for any local project.
 
-##### Restart PHP
+___
+
+> ### 4. Setup Anstible Directory
+
+##### Prepare Ansible Directory
 
 <pre>
 
-sudo systemctl restart php7.0-fpm.service
+mkdir <span style="color: red">directory-name</span>
+cd <span style="color: red">directory-name</span>
+nano hosts
 
 </pre>
 
-This makes sure our changes are applied.
+This creates our Ansible directory. The host file will contain all of our server IPs listed in groups. Create a group by typing **[<span style="color: red">group-name</span>]** then list your server IPs below it. Save and exit the file.
 
-##### Configure Nginx To Use The PHP Processor
+##### Install Python
 
 <pre>
 
-sudo nano /etc/nginx/sites-available/default
+ansible all -m raw -s -a "sudo apt-get -y install python-simplejson" -u root --private-key=~/.ssh/id_<span style="color: red">id-name</span> -i ./hosts
 
 </pre>
 
-Open the default file and replace the entire file with the following text:
+We are required to use the raw module in order to get Python working on our Ansible automation. This will allow us to use Python for future steps. This may take a while.
+
+##### Ping Our Server
+
+<pre>
+
+ansible all -m ping -u root --private-key=~/.ssh/id_<span style="color: red">id-name</span> -i ./hosts
+
+</pre>
+
+You will be asked about the authenticity of the host. Enter **y** for yes to add the IP to your known hosts. We should then successfully ping the server.
+
+___
+
+> ### 4. Setup Anstible Files
+
+##### Prepare Ansible Files
+
+<pre>
+
+mkdir roles
+cd roles
+mkdir server
+cd server
+mkdir files
+mkdir handlers
+mkdir meta
+mkdir tasks
+mkdir templates
+mkdir vars
+
+</pre>
+
+This creates the necessary file structure for Ansible to work. Add a **main.yml** file to the following folders:
+
+* **files**
+* **handlers**
+* **meta**
+* **tasks**
+* **vars**
+
+The **main.yml** files will hold all of our functionality for Ansible's automation.
+
+___
+
+> ### 5. Main.yml Files
+
+##### Files Folder
+
+In your **files** folder, visit the [H5BP Github Repo](https://github.com/h5bp/server-configs-nginx) and download the H5BP folder. Move it into your **files** folder. This will allow for more nginx config settings.
+
+##### Handlers Folder
+
+In your **handlers** folder, paste the following text into its **main.yml** file:
+
+<pre>
+
+---
+- name: Start Nginx
+  service: name=nginx state=started
+
+- name: Reload Nginx
+  service: name=nginx state=restarted
+
+- name: Stop Nginx
+  service: name=nginx state=stopped
+
+- name: Reload PHP
+  service: name=php7.0-fpm state=restarted
+
+</pre>
+
+This will allow us to start, restart, and stop Nginx, as well as restart PHP. Our tasks will eventually call these handlers after certain events are fired.
+
+##### Meta Folder
+
+In your **meta** folder, paste the following text into its **main.yml** file:
+
+<pre>
+
+---
+dependencies: []
+
+</pre>
+
+This allows the meta to store any dependencies.
+
+##### Tasks Folder
+
+In your **tasks** folder, paste the following text into its **main.yml** file:
+
+<pre>
+
+---
+- script: ./git-setup.sh
+
+- user:
+    name: bailey
+    group: sudo
+
+- name: Add Nginx Repo
+  apt_repository: repo='ppa:nginx/stable' state=present
+
+- name: Install Nginx
+  apt: pkg=nginx state=latest update_cache=true
+  notify:
+    - Start Nginx
+
+- name: Add PHP Repo
+  apt_repository: repo='ppa:ondrej/php' state=present
+
+- name: Install PHP
+  apt: pkg={{ item }} state=latest update_cache=true
+  with_items:
+    - php7.0-fpm
+    - php7.0-mysql
+
+- name: Install MariaDB repository
+  apt_repository: repo='deb http://ftp.igh.cnrs.fr/pub/mariadb/repo/10.0/ubuntu trusty main' state=present 
+
+- name: Add repository key to the system 
+  apt_key: keyserver=keyserver.ubuntu.com id=0xcbcb082a1bb943db 
+
+- name: Install MariaDB Server 
+  apt: pkg={{ item }} state=latest update_cache=true
+  with_items:
+    - mariadb-server
+    - python-mysqldb
+
+- name: Download WordPress
+  get_url: url=http://wordpress.org/wordpress-{{ wp_version }}.tar.gz dest=/var/www/html/wordpress-{{ wp_version }}.tar.gz
+
+- name: Extract Wordpress Files
+  command: chdir=/var/www/html /bin/tar xvf wordpress-{{ wp_version }}.tar.gz creates=/var/www/html/wordpress
+
+- name: Add group "wordpress"
+  group: name=wordpress
+
+- name: Add user "wordpress"
+  user: name=wordpress group=wordpress home=/var/www/html/wordpress
+
+- name: Create WordPress database
+  mysql_db: name={{ wp_db_name }} state=present
+
+- name: Create WordPress database user
+  mysql_user: name={{ wp_db_user }} password={{ wp_db_password }} priv={{ wp_db_name }}.*:ALL host='localhost' state=present
+
+- name: Copy WordPress config file
+  template: src=wp-config.php dest=/var/www/html/wordpress
+
+- name: Change ownership of WordPress installation
+  file: path=/var/www/html/wordpress owner=wordpress group=wordpress state=directory recurse=yes setype=httpd_sys_content_t
+
+- name: Add H5BP Config
+  copy: src=h5BP dest=/etc/nginx owner=root group=root
+
+- name: Remove Default Config
+  file: dest=/etc/nginx/sites-enabled/default state=absent
+  notify:
+    - Reload Nginx
+
+- name: Add Server {{ domain }} Config
+  template: src={{ domain }}.j2 dest=/etc/nginx/sites-available/{{ domain }} owner=root group=root
+
+- name: Enable Site Config
+  file: src=/etc/nginx/sites-available/{{ domain }} dest=/etc/nginx/sites-enabled/{{ domain }} state=link
+  notify:
+    - Reload Nginx
+    - Reload PHP
+
+</pre>
+
+This is the core functionality for our Ansible playbook we'll be creating soon. This installs and runs Nginx, PHP, MariaDB, and Wordpress, as well as setting up our configuration for our site.
+
+##### Template Folder
+
+In your **template** folder, create a new file. Give it a domain name, for example: **poop123.com** and add the extension **.j2**. So your final file name should be something like **poop123.com.j2**. Inside of that file, paste the following text:
 
 <pre>
 
@@ -127,7 +255,7 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
 
-    root /var/www/html;
+    root /var/www/html/wordpress;
     index index.php index.html index.htm index.nginx-debian.html;
 
     server_name localhost;
@@ -139,7 +267,7 @@ server {
     error_page 404 /404.html;
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
-        root /var/www/html;
+        root /var/www/html/wordpress;
     }
 
     location ~ \.php$ {
@@ -154,191 +282,176 @@ server {
 
 </pre>
 
-This allows Nginx to read PHP and process the files.
+This will be our Nginx root document that points to specific locations for our Wordpress files and PHP to be ran. Next, you'll need to create a **wp-config.php** file and paste the following text:
 
-##### Restart Nginx
+```shell
+
+<?php
+/**
+ * The base configurations of the WordPress.
+ *
+ * This file has the following configurations: MySQL settings, Table Prefix,
+ * Secret Keys, WordPress Language, and ABSPATH. You can find more information
+ * by visiting {@link http://codex.wordpress.org/Editing_wp-config.php Editing
+ * wp-config.php} Codex page. You can get the MySQL settings from your web host.
+ *
+ * This file is used by the wp-config.php creation script during the
+ * installation. You don't have to use the web site, you can just copy this file
+ * to "wp-config.php" and fill in the values.
+ *
+ * @package WordPress
+ */
+// ** MySQL settings - You can get this info from your web host ** //
+/** The name of the database for WordPress */
+define('DB_NAME', '{{ wp_db_name }}');
+/** MySQL database username */
+define('DB_USER', '{{ wp_db_user }}');
+/** MySQL database password */
+define('DB_PASSWORD', '{{ wp_db_password }}');
+/** MySQL hostname */
+define('DB_HOST', 'localhost');
+/** Database Charset to use in creating database tables. */
+define('DB_CHARSET', 'utf8');
+/** The Database Collate type. Don't change this if in doubt. */
+define('DB_COLLATE', '');
+/**#@+
+ * Authentication Unique Keys and Salts.
+ *
+ * Change these to different unique phrases!
+ * You can generate these using the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}
+ * You can change these at any point in time to invalidate all existing cookies. This will force all users to have to log in again.
+ *
+ * @since 2.6.0
+ */
+
+/**#@-*/
+/**
+ * WordPress Database Table prefix.
+ *
+ * You can have multiple installations in one database if you give each a unique
+ * prefix. Only numbers, letters, and underscores please!
+ */
+$table_prefix  = 'wp_';
+/**
+ * WordPress Localized Language, defaults to English.
+ *
+ * Change this to localize WordPress. A corresponding MO file for the chosen
+ * language must be installed to wp-content/languages. For example, install
+ * de_DE.mo to wp-content/languages and set WPLANG to 'de_DE' to enable German
+ * language support.
+ */
+define('WPLANG', '');
+/**
+ * For developers: WordPress debugging mode.
+ *
+ * Change this to true to enable the display of notices during development.
+ * It is strongly recommended that plugin and theme developers use WP_DEBUG
+ * in their development environments.
+ */
+define('WP_DEBUG', false);
+/** Disable Automatic Updates Completely */
+define( 'AUTOMATIC_UPDATER_DISABLED', {{auto_up_disable}} );
+/** Define AUTOMATIC Updates for Components. */
+define( 'WP_AUTO_UPDATE_CORE', {{core_update_level}} );
+/* That's all, stop editing! Happy blogging. */
+/** Absolute path to the WordPress directory. */
+if ( !defined('ABSPATH') )
+	define('ABSPATH', dirname(__FILE__) . '/');
+/** Sets up WordPress vars and included files. */
+require_once(ABSPATH . 'wp-settings.php');
+
+
+```
+
+This is our Wordpress' configuration file that includes our database information.
+
+##### Vars Folder
+
+In your **vars** folder, paste the following text into its **main.yml** file:
 
 <pre>
 
-sudo systemctl restart nginx
+---
+domain: <span style="color: red;">domain@name.com</span>
+wp_version: <span style="color: red;">4.7.2</span>
+wp_db_name: <span style="color: red;">wordpressdb</span>
+wp_db_user: <span style="color: red;">wpuser</span>
+wp_db_password: <span style="color: red;">dbpassword</span>
+auto_up_disable: false
+core_update_level: true
 
 </pre>
 
-This allows our changes to Nginx using the PHP processer to be applied.
+These are all of the variables that will be used throughout our Ansible playbook. You can change the Wordpress version, but **4.7.2** is recommended.
 
 ___
 
-> ### 5. Install MariaDB
+> ### 6. Playbook File
 
-We will be using MariaDB for our Wordpress database. MariaDB is a version of MySQL with better performance.
+##### Create Playbook.yml
 
-##### Apt-Get And Install MariaDB
-
-<pre>
-
-sudo apt-get install mariadb-server
-sudo mysql_install_db
-sudo service mysql start
-
-</pre>
-
-The installation may take a while to complete. After installation, start the Maria database.
-
-##### Configure MariaDB
+In the root of your Ansible project, create a **playbook.yml** file and add the following text:
 
 <pre>
 
-sudo mysql_secure_installation
+---
+  - hosts: <span style="color: red;">group name</span>
+    become: true
+    user: root
+    roles:
+      - server
 
 </pre>
 
-After running this command, press enter for the default password for MariaDB. Now you will be asked to reset the password again, input **y** for yes and change the password. For the rest of the setup, answer each question with **y** for yes to finish your MariaDB configuration.
-
-##### Login To MariaDB As Root
-
-<pre>
-
-sudo mysql -u root -p
-
-</pre>
-
-Enter the root user's password and you should see a confirmation screen that you are logged in.
-
-##### Create Wordpress Database
-
-<pre>
-
-create database <span style="color: red">database_name</span>;
-
-</pre>
-
-You should then get a success notification if the database is made.
-
-##### Create Wordpress Database User
-
-<pre>
-
-create user <span style="color: red">username</span>@localhost identified by '<span style="color: red">user_password</span>';
-
-</pre>
-
-This creates a new user for the database.
-
-##### Grant New User Privileges
-
-<pre>
-
-grant all privileges on <span style="color: red">database_name</span>.* to <span style="color: red">username</span>@localhost identified by '<span style="color: red">user_password</span>';
-
-</pre>
-
-This grants your new user all privileges for the Wordpress database.
-
-##### Flush Privileges And Exit
-
-<pre>
-
-flush privileges;
-exit
-
-</pre>
-
-This makes sure the privilege changes you just made are now active for your new user.
+This will actually execute our **server** role to run on every group's IPs in our **hosts** file.
 
 ___
 
-> ### 6. Install Wordpress
+> ### 7. Githook Script
 
-The final step is to now install Wordpress onto your server, then you should be able to configure your new site on the web!
+##### Create Bare Repo For Githook Setup
 
-##### Install Wordpress Files
+In the root of your Ansible project, create a **git-setup.sh** file and add the following text:
 
-<pre>
+```shell
 
-cd /var/www/html
-sudo wget http://wordpress.org/latest.tar.gz
-sudo tar xzvf latest.tar.gz
+#!/bin/bash
 
-</pre>
+cd /var
 
-Create the necessary directories for your Download and extract the latest Wordpress version onto your server.
-
-##### Wordpress File Configuration Pt. 1
-
-<pre>
-
-cd /var/www/html/wordpress
-sudo cp wp-config-sample.php wp-config.php
-
-</pre>
-
-Prepare the Wordpress wp-config.php file to be used.
-
-##### Wordpress File Configuration Pt. 2
-
-<pre>
-
-sudo nano wp-config.php
-
-</pre>
-
-Open the wp-config.php file. Replace **database\_name\_here** with your database name, replace **username_here** with your database user, and replace **password_here** with your user's password. Save and exit the file.
-
-##### Move Wordpress Files
-
-<pre>
-
-sudo rsync -avP /var/www/html/wordpress/ /var/www/html/
-
-</pre>
-
-We will use rsync to move the files along with their privileges and ownership on each file.
-
-##### Give Yourself Ownership
-
-<pre>
-
-sudo chown -R <span style="color: red">user</span>:www-data /var/www/html/*
-
-</pre>
-
-Now you will have ownership over every Wordpress file!
-
-##### Create Uploads Directory
-
-<pre>
-
-sudo mkdir /var/www/html/wp-content/uploads
-
-</pre>
-
-This directory will hold all files you'll ever upload, such as images or favicons.
-
-##### Permit Uploads
-
-<pre>
-
-sudo chown -R :www-data /var/www/html/wp-content/uploads
-
-</pre>
-
-This will allow the web server to create files and directories under this directory, which will permit us to upload content to the server.
+if [ ! -d /var/repos ]; then
+  mkdir repos && cd repos
+  mkdir wp.git && cd wp.git
+  git init --bare
+  cd hooks
+  touch post-receive
+  chmod +x post-receive
+  echo "#!/bin/bash" > post-receive
+  echo "git --work-tree=/var/www/html/wordpress/ --git-dir=/var/repos/wp.git/ checkout -f" >> post-receive
+fi
 
 
-##### Restart Nginx And PHP
+```
 
-<pre>
-
-sudo systemctl restart nginx
-sudo systemctl restart php7.0-fpm.service
-
-</pre>
-
-This should apply all of our changes and prepare our site to use the Wordpress installation by default.
+This will check if your repo already exists, if not, it will create the new repo and your githook for post-receive.
 
 ___
 
-> ### 7. Access And Configure Wordpress
+> ### 8. Ansible Automation
+
+##### Run Ansible Playbook
+
+<pre>
+
+ansible-playbook --private-key=~/.ssh/id_<span style="color: red">id-name</span> -i ./hosts playbook.yml
+
+</pre>
+
+This will run our playbook and automate installing everything we need onto our servers. This may take a while to finish running, but you can watch the progress as it runs.
+
+___
+
+> ### 9. Access And Configure Wordpress
 
 Your Wordpress site should now be available! Visit **http://<span style="color: red">your-IP-address</span>** and the Wordpress site configuration should appear. Now have fun customizing your own Wordpress site!
 

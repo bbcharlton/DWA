@@ -1,7 +1,6 @@
 # Githook Deployment
 ### Deploying files and testing them with Githooks.
 
-This requires that you've already followed the [setup guide](https://github.com/bbcharlton/DWA/blob/master/setup.md).
 ___
 
 > ### 1. Local Wordpress Setup
@@ -114,11 +113,11 @@ This will now run our test.
 <pre>
 
 git init
-git remote add origin <span style="color: red;">user</span>@<span style="color: red;">your-IP-address</span>:/home/<span style="color: red;">user</span>/repos/wordpress.git
+git remote add origin root@<span style="color: red;">your-IP-address</span>:/var/repos/wp.git
 
 </pre>
 
-This creates a remote that directs to our **/home/<span style="color: red;">user</span>/repos/wordpress.git** bare repo.
+This creates a remote that directs to our **/var/repos/wp.git** bare repo.
 
 ##### Pre-Commit Hook
 
@@ -222,93 +221,7 @@ This will make sure that no sensitive information is sent to our remote repo.
 
 ___
 
-> ### 2. SSH Into Remote Server
-
-##### Enter Remote Server
-
-<pre>
-
-ssh <span style="color: red;">user</span>@<span style="color: red;">your-IP-address</span>
-cd ~/
-
-</pre>
-
-Enter in your remote user's credentials and change to the **/var** directory.
-
-##### Create Git Repos
-
-<pre>
-
-sudo mkdir repos
-sudo mkdir repos/wordpress.git
-
-</pre>
-
-This creates the directory we will make as a Git repository.
-
-##### Give Yourself Ownership
-
-<pre>
-
-sudo chown -R <span style="color: red;">user</span>:www-data ~/repos/*    
-
-</pre>
-
-This gives you ownership of the repos directory and all its files. This will allow us to alter the files using Git.
-
-##### Initialize Git Repo
-
-<pre>
-
-cd repos/wordpress.git
-sudo git init --bare
-
-</pre>
-
-This creates a repository without a working directory.
-
-##### Create Post-Receive Hook
-
-<pre>
-
-cd hooks
-sudo nano post-receive
-
-</pre>
-
-This creates the post-receive hook that will communicate with our **/var/www/html** folder. Paste in the following text:
-
-<pre>
-
-#!/bin/bash
-while read oldrev newrev ref
-do
-    if [[ $ref =~ .*/master$ ]];
-    then
-        echo "Master ref received.  Deploying master branch to production..."
-        git --work-tree=/var/www/html --git-dir=/home/<span style="color: red;">user</span>/repos/wordpress.git checkout -f
-    else
-        echo "Ref $ref successfully received.  Doing nothing: only the master branch may be deployed on this server."
-    fi
-done
-
-</pre>
-
-This will send our data to the **/var/www/html** directory when our **/home/<span style="color: red;">user</span>/repos/wordpress.git** directory receives meta data.
-
-##### Make Post-Receive Exectuable
-
-<pre>
-
-sudo chmod +x post-receive
-
-</pre>
-
-This allows our hook to be exectuable. By default it is not, so we must change it.
-
-___
-
-> ### 3. Pipeline Complete!
+> ### 2. Pipeline Complete!
 
 ##### Use Workflow
 
