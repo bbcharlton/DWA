@@ -146,8 +146,6 @@ For your **nginx** role, in the **tasks** folder, paste the following text into 
 
 ```shell
 ---
-- script: ./directory-setup.sh
-
 - name: Add Nginx Repo
   apt_repository: repo='ppa:nginx/stable' state=present
 
