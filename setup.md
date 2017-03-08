@@ -620,9 +620,14 @@ This will run our playbook and automate installing everything we need onto our s
 
 ___
 
-> ### 9. Access And Configure Wordpress
+> ### 12. Access Your Sites
 
-Your Wordpress site should now be available! Visit **http://<span style="color: red">your-IP-address</span>** and the Wordpress site configuration should appear. Now have fun customizing your own Wordpress site!
+Your pipelined sites should now be available at the folloing addresses:
+
+* **http://html.YOUR\_IP\_ADDRESS.xip.io**
+* **http://php.YOUR\_IP\_ADDRESS.xip.io**
+* **http://node.YOUR\_IP\_ADDRESS.xip.io**
+* **http://YOUR\_IP\_ADDRESS**
 
 ___
 
