@@ -1,5 +1,7 @@
 # Repo Deployment
 ### Deploying files to our servers.
+
+This requires that you've already followed the [setup guide](https://github.com/bbcharlton/DWA/blob/master/setup.md).
 ___
 
 > ### 1. Local Directory Setup
