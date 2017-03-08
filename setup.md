@@ -624,10 +624,10 @@ ___
 
 Your pipelined sites should now be available at the folloing addresses:
 
-* **http://html.YOUR\_IP\_ADDRESS.xip.io**
-* **http://php.YOUR\_IP\_ADDRESS.xip.io**
-* **http://node.YOUR\_IP\_ADDRESS.xip.io**
-* **http://YOUR\_IP\_ADDRESS**
+* **http://html.YOUR_IP_ADDRESS.xip.io**
+* **http://php.YOUR_IP_ADDRESS.xip.io**
+* **http://node.YOUR_IP_ADDRESS.xip.io**
+* **http://YOUR_IP_ADDRESS**
 
 ___
 
