@@ -1,4 +1,4 @@
-# Ubunutu 16.04/Wordpress Ansible Automation
+# Ubunutu 16.04/Pipeline Ansible Automation
 ### Using Digital Ocean to spin up an Ubuntu server that uses three different pipelines, HTML, Wordpress, and Node.
 ___
 
