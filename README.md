@@ -1,5 +1,7 @@
 # Wordpress File Deployment
 ### Deploying files to your Wordpress site.
+
+This tutorial requires that you've followed the [setup guide](https://github.com/bbcharlton/DWA/blob/75c8120804d60cc26bc18c95161264b04f20b8af/setup.md).
 ___
 
 > ### 1. Upload File
