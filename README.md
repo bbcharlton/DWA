@@ -1,55 +1,99 @@
 # Repo Deployment
 ### Deploying files to our servers.
-
-This requires that you've already followed the [setup guide](https://github.com/bbcharlton/DWA/blob/master/setup.md).
 ___
 
 > ### 1. Local Directory Setup
 
-On your local machine, create a project folder named whatever you want.
+On your local machine, download the project repo from my [Github repo](https://github.com/bbcharlton/AnsibleProjectRepos). These files will hold the projects we will deploy. Unzip the file, move the folder to your preferred location, and go into the folder.
 
-##### Git Setup Bash Script
-
-Create a file named **git-setup.sh** and paste the following text:
+##### Git Remote Setup
 
 ```shell
-#!/bin/bash
-mkdir html && cd html
 git init
-git remote add htmlRepo root@YOUR_IP_ADDRESS:/var/repos/html
-cd ..
-mkdir php && cd php
-git init
-git remote add phpRepo root@YOUR_IP_ADDRESS:/var/repos/php
-cd ..
-mkdir node && cd node
-git init
-git remote add nodeRepo root@YOUR_IP_ADDRESS:/var/repos/node
-cd ..
+git remote add REMOTE root@YOUR_IP_ADDRESS:/var/repo
 ```
+
+This initializes our folder as a working directory then creates the remote that we'll use to deploy our files.
 
 ##### Note: Use your Staging server's IP for the remote IP. You can also duplicate this, change the remote name, and use your Production server's IP to allow access to push to it. We are also using root as the user because we used Ansible to automate our servers.
 
-This bash script will create all necessary directories and make them git repos. However we need to make it executable.
+##### Deploy
 
 ```shell
-chmod +x git-setup.sh
+git add .
+git commit -m "First commit"
+git push origin master
 ```
 
-Now that it's executable, let's run it.
+This will send our files to our remote server, which will then finalize our folder structure on the server.
+
+##### Verify Deployment
 
 ```shell
-./git-setup.sh
+ssh root@YOUR_IP_ADDRESS
+cd /var/www/html
 ```
 
-Now all directories and repos have successfully been created.
+We'll ssh into our server then should see our project folders: html and node.
 
 ___
 
-> ### 2. Workflow!
+> ### 2. PM2 Start Our Projects
 
-##### Use Workflow
+##### Node Projects
 
-Now if you have multiple projects such as HTML, Node, or Wordpress on your local machine, you can then specify which repo you want to send the files to from your local machine and they'll appear in the appropriate directory on either your Staging or Production server.
+```shell
+cd node
+cd proj3
+npm install
+npm install express-validator
+npm install pug
+pm2 start server.js
+```
 
+This will prepare the packages for our first Node application, then server it using PM2. We must npm install the packages first since we use .gitignore to prevent the transfer of the node_modules folder.
+
+```shell
+cd ..
+cd proj4
+pm2 start server.js
+```
+
+Since this Node app doesn't have any node modules, it just needs a simple pm2 start.
+
+___
+
+> ### 3. Visit Subdomains!
+
+##### HTML Subdomains
+
+We can now visit the following sites:
+
+* **html1.YOUR\_IP\_ADDRESS.xip.io**
+* **html2.YOUR\_IP\_ADDRESS.xip.io**
+
+And our two HTML projects should be loaded up!
+
+##### Node Subdomains
+
+We can now visit the following sites:
+
+* **node1.YOUR\_IP\_ADDRESS.xip.io**
+* **node2.YOUR\_IP\_ADDRESS.xip.io**
+
+And our two Node projects should be loaded up!
+
+___
+
+> ### 4. Use Workflow
+
+##### Edit Local Files
+
+Enter into the repo's folder that you pulled from my Github. Any time you edit any of the projects, you just have to be in the root of the repo file to use basic git workflow commands such as:
+
+```shell
+git add .
+git commit -m "YOUR MESSAGE"
+git push REMOTE master
+```
 ___
