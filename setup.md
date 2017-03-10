@@ -1,5 +1,5 @@
-# Ubunutu 16.04/Pipeline Ansible Automation
-### Using Digital Ocean to spin up an Ubuntu server that uses two different pipelines, HTML and Node. Each pipeline will include two projects.
+# Ubunutu 14.04/Wordpress Server Setup
+### Using Digital Ocean to spin up an Ubuntu server using MariaDB and PHP for a Wordpress website.
 ___
 
 > ### 1. Generate Your SSH Key
@@ -10,7 +10,7 @@ ___
 
 ```shell
 cd ~/.ssh
-ssh-keygen -t rsa -b 4096 -C "YOUR@EMAIL_ADDRESS" -f ID_NAME
+ssh-keygen -t rsa -b 4096 -C "YOUR@EMAIL_ADDRESS" -f id_ID_NAME
 ```
 
 On your local machine, change to your ssh directory and generate a new ssh key to use for your Digital Ocean server. It will then generate and ask you for a passphrase to remember. Give it a secure password and press enter. Get your public key using the following command:
@@ -25,365 +25,243 @@ ___
 
 > ### 2. Creating Your Droplet With SSH
 
-Sign in to your Digital Ocean account and go to your settings page. Click on **Security** and click the **Add SSH Key** button. Paste in your copied public key and give it a unique name. Save and go to the Droplets page. Customize how you want your Droplet to be. Be sure to use **Ubuntu 16.04 x64** for this specific setup. For the SSH option, click on the SSH key name you just added to your profile, and create
+Sign in to your Digital Ocean account and go to your settings page. Click on **Security** and click the **Add SSH Key** button. Paste in your copied public key and give it a unique name. Save and go to the Droplets page. Customize how you want your Droplet to be. Be sure to use **Ubuntu 14.04 x64** for this specific setup. For the SSH option, click on the SSH key name you just added to your profile, and create
+
+```shell
+ssh root@YOUR_IP_ADDRESS
+```
+
+Now you can enter into your server securely without a password. You will be asked about the authenticity of the host. Enter **y** for yes to add the IP to your known hosts. If you have problems ssh'ing into your server, follow this [guide](https://www.digitalocean.com/community/questions/permission-denied-after-creating-droplet-using-ssh-keys).
 
 ___
 
-> ### 3. Install Ansible With Brew
+> ### 3. Nginx Setup
 
-##### Install Brew
+Nginx allows us to be able to use PHP on our server, which Wordpress functionality relies on.
 
-You can use the following article on how to install [Brew](https://brew.sh/).
-
-##### Install Ansible
+##### Apt-Get And Install Nginx
 
 ```shell
-brew install ansible
+apt-get update
+apt-get install nginx
 ```
 
-This installs Ansible globally on our local machine, which allows us to use it for any local project.
+This will make sure your server has all the proper files and packages, then install Nginx. This may take a while to finish. Once completed, you should now be able to access your default Nginx page on your server's IP. Do so by visiting **http://YOUR\_IP\_ADDRESS**.
 
 ___
 
-> ### 4. Setup Anstible Directory
+> ### 4. PHP Setup
 
-##### Prepare Ansible Directory
+Nginx alone can't run PHP files, so we'll need to install PHP and configure some files to allow Wordpress to run its files.
 
-```shell
-mkdir DIRECTORY_NAME
-cd DIRECTORY_NAME
-nano hosts
-```
-
-This creates our Ansible directory. The host file will contain all of our server IPs listed in groups. Create a group by typing **[GROUP_NAME]** then list your server IP below it. Save and exit the file.
-
-#### Warning: For creating a Staging and Production server, it is suggested to only use one IP at a time for the rest of this tutorial so both servers aren't running on one IP, since Ansible automates the same server document onto all servers.
-
-##### Install Python
+##### Apt-Get And Install PHP
 
 ```shell
-ansible all -m raw -s -a "sudo apt-get -y install python-simplejson" -u root --private-key=~/.ssh/ID_NAME -i ./hosts
+apt-get install php5-fpm php5-mysql
 ```
 
-We are required to use the raw module in order to get Python working on our Ansible automation. This will allow us to use Python for future steps. This may take a while. You will be asked about the authenticity of the host. Enter **y** for yes to add the IP to your known hosts.
+This installs all the required files and packages to use PHP on your server. This may take a while to complete.
 
-##### Ping Our Server
+##### Configure The PHP Processor
 
 ```shell
-ansible all -m ping -u root --private-key=~/.ssh/ID_NAME -i ./hosts
+nano /etc/php5/fpm/php.ini
 ```
 
-We should now get two successful outputs from our server pings.
-
-___
-
-> ### 4. Setup Ansible Files
-
-##### Prepare Ansible Files
+Open the php.ini file to access the php-fpm configuration. Use **Ctrl + W** and search for **;cgi.fix_pathinfo=1**. Replace that line with the following:
 
 ```shell
-mkdir roles
-cd roles
-mkdir nginx
-mkdir node
-mkdir githook
-```
+cgi.fix_pathinfo=0
+``` 
 
-These will be our roles running separate tasks. This creates the necessary file structure for Ansible to work. For each role, add the following folders:
-
-* **files**
-* **handlers**
-* **meta**
-* **tasks**
-* **templates**
-* **vars**
-
-Then add a **main.yml** file to the following folders for each role:
-
-* **handlers**
-* **meta**
-* **tasks**
-* **vars**
-
-The **main.yml** files will hold all of our functionality for Ansible's automation.
-
-___
-
-> ### 5. Nginx Role
-
-##### Handlers Folder
-
-For your **nginx** role, in the **handlers** folder, paste the following text into its **main.yml** file:
+##### Restart PHP
 
 ```shell
----
-- name: Start Nginx
-  service: name=nginx state=started
-
-- name: Reload Nginx
-  service: name=nginx state=restarted
-
-- name: Stop Nginx
-  service: name=nginx state=stopped
+service php5-fpm restart
 ```
 
-This will allow us to start, restart, and stop Nginx. Our tasks will eventually call these handlers after certain events are fired.
+This makes sure our changes are applied.
 
-##### Meta Folder
-
-For your **nginx** role, in the **meta** folder, paste the following text into its **main.yml** file:
+##### Configure Nginx To Use The PHP Processor
 
 ```shell
----
-dependencies: []
+cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default-backup
+rm /etc/nginx/sites-available/default
+nano /etc/nginx/sites-available/default
 ```
 
-This allows the meta to store any dependencies.
-
-##### Tasks Folder
-
-For your **nginx** role, in the **tasks** folder, paste the following text into its **main.yml** file:
-
-```shell
----
-- name: Add Nginx Repo
-  apt_repository: repo='ppa:nginx/stable' state=present
-
-- name: Install Nginx
-  apt: pkg=nginx state=latest update_cache=true
-  notify:
-    - Start Nginx
-
-- name: Remove Default Config
-  file: dest=/etc/nginx/sites-enabled/default state=absent
-  notify:
-    - Reload Nginx
-
-- name: Add Server {{ domain }} Config
-  template: src={{ domain }}.j2 dest=/etc/nginx/sites-available/{{ domain }} owner=root group=root
-
-- name: Enable Site Config
-  file: src=/etc/nginx/sites-available/{{ domain }} dest=/etc/nginx/sites-enabled/{{ domain }} state=link
-  notify:
-    - Reload Nginx
-```
-
-Tasks are the core functionality for Ansible's playbooks. This task will get Nginx installed and running.
-
-##### Templates Folder
-
-For your **nginx** role, in the **templates** folder, create a new file. Give it a domain name, for example: **poop123.com** and add the extension **.j2**. So your final file name should be something like **poop123.com.j2**. Inside of that file, paste the following text:
+We will first make a backup of the current server document, delete the original, and create a new one. Paste the following text:
 
 ```shell
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
 
-    root /var/www/html/html/proj1;
-    index index.html index.htm index.nginx-debian.html;
+    root /usr/share/nginx/html;
+    index index.php index.html index.htm index.nginx-debian.html;
 
-    server_name html1.{{ ip }}.xip.io;
+    server_name localhost;
 
     location / {
         try_files $uri $uri/ =404;
+    }
+    
+    location /favicon.ico {
+        log_not_found off; 
+        access_log off;
     }
 
     error_page 404 /404.html;
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
-        root /var/www/html;
-    }
-}
-
-server {
-    listen 80;
-    listen [::]:80;
-
-    root /var/www/html/html/proj2;
-    index index.html index.htm index.nginx-debian.html;
-
-    server_name html2.{{ ip }}.xip.io;
-
-    location / {
-        try_files $uri $uri/ =404;
+        root /usr/share/nginx/html;
     }
 
-    error_page 404 /404.html;
-    error_page 500 502 503 504 /50x.html;
-    location = /50x.html {
-        root /var/www/html;
-    }
-}
-
-server {
-    listen 80;
-    listen [::]:80;
-
-    root /var/www/html/node/proj3;
-    index index.html index.htm index.nginx-debian.html;
-
-    server_name node1.{{ ip }}.xip.io;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_buffering off;
-    }
-}
-
-server {
-    listen 80;
-    listen [::]:80;
-
-    root /var/www/html/node/proj4;
-    index index.html index.htm index.nginx-debian.html;
-
-    server_name node2.{{ ip }}.xip.io;
-
-    location / {
-        proxy_pass http://localhost:3001;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_buffering off;
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass unix:/var/run/php5-fpm.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
     }
 }
 ```
 
-This will be our Nginx root document that points to specific locations for all six of our our pipelines to work.
+This allows Nginx to read PHP and process the files.
 
-##### Vars Folder
-
-For your **nginx** role, in the **vars** folder, paste the following text into its **main.yml** file:
+##### Restart Nginx
 
 ```shell
----
-ip: YOUR_IP_ADDRESS
-domain: YOUR@DOMAIN_NAME
+service nginx restart
 ```
 
-This domain variable should be the same as your **.j2** file's domain name.
+This allows our changes to Nginx using the PHP processer to be applied.
 
 ___
 
-> ### 6. Node Role
+> ### 5. Install MariaDB
 
-##### Files Folder
+We will be using MariaDB for our Wordpress database. MariaDB is a version of MySQL with better performance.
 
-For your **node** role, in the **files** folder, create a new file named **install-node.sh** and paste the following text:
-
-```shell
-#!/bin/bash
-
-cd ~
-
-if [ ! -d ~/nodesource_setup.sh ]; then
-  curl -sL https://deb.nodesource.com/setup_6.x -o nodesource_setup.sh
-  bash nodesource_setup.sh
-  apt-get install nodejs
-  apt-get install build-essential -y
-  npm install -g pm2
-fi
-```
-
-This script downloads Node's source to allow installation of NodeJS. It also installs the build-essential package that is required with Node. Lastly, we install PM2 to allow our apps to continuously run.
-
-##### Meta Folder
-
-For your **node** role, in the **meta** folder, paste the following text into its **main.yml** file:
+##### Apt-Get And Install MariaDB
 
 ```shell
----
-dependencies: []
+apt-get install mariadb-server
 ```
 
-##### Tasks Folder
+You will then be prompted to reset the root user's password. The installation may take a while to complete.
 
-For your **node** role, in the **tasks** folder, paste the following text into its **main.yml** file:
+##### Configure MariaDB
 
 ```shell
----
-- script: ./install-node.sh
+mysql_secure_installation
 ```
+
+This command ensures that our database is secured by removing all default databases and anonynmous users. After running this command, press enter for the default password for MariaDB. Now you will be asked to reset the password again, input **n** for no. For the rest of the setup, answer each question with **y** for yes to finish your MariaDB configuration.
+
+##### Login To MariaDB As Root
+
+```shell
+mysql -u root -p
+```
+
+Enter the root user's password and you should see a confirmation screen that you are logged in.
+
+##### Create Wordpress Database
+
+```shell
+create database DATABASE_NAME;
+```
+
+You should then get a success notification if the database is made.
+
+##### Create Wordpress Database User
+
+```shell
+create user USERNAME@localhost identified by 'USERNAME_PASSWORD';
+```
+
+##### Grant New User Privileges
+
+```shell
+grant all privileges on DATABASE_NAME.* to USERNAME@localhost identified by 'USERNAME_PASSWORD';
+```
+
+This grants your new user all privileges for the Wordpress database.
+
+##### Flush Privileges And Exit
+
+```shell
+flush privileges;
+exit
+```
+
+This makes sure the privilege changes you just made are now active for your new user.
 
 ___
 
-> ### 7. Githook Role
+> ### 6. Install Wordpress
 
-##### Files Folder
+The final step is to now install Wordpress onto your server, then you should be able to configure your new site on the web!
 
-For your **githook** role, in the **files** folder, create a new file named **githook-setup.sh** and paste the following text:
-
-```shell
-#!/bin/bash
-
-cd /var
-
-if [ ! -d /var/repo ]; then
-  mkdir repo && cd repo
-  git init --bare
-  cd hooks
-  touch post-receive
-  chmod +x post-receive
-  echo "#!/bin/bash" > post-receive
-  echo "git --work-tree=/var/www/html --git-dir=/var/repo checkout -f" >> post-receive
-fi
-```
-
-This will check if your repo already exists, if not, it will create the new repo and your githook for post-receive.
-
-##### Meta Folder
-
-For your **githook** role, in the **meta** folder, paste the following text into its **main.yml** file:
+##### Install Wordpress Files
 
 ```shell
----
-dependencies: []
+cd /usr/share/nginx/html
+wget http://wordpress.org/latest.tar.gz
+tar xzvf latest.tar.gz
 ```
 
-##### Tasks Folder
+Download and extract the latest Wordpress version onto your server.
 
-For your **githook** role, in the **tasks** folder, paste the following text into its **main.yml** file:
+##### Wordpress File Configuration Pt. 1
 
 ```shell
----
-- script: ./githook-setup.sh
+cd wordpress
+cp wp-config-sample.php wp-config.php
 ```
+
+Prepare the Wordpress wp-config.php file to be used.
+
+##### Wordpress File Configuration Pt. 2
+
+```shell
+nano wp-config.php
+```
+
+Open the wp-config.php file. Replace **database\_name\_here** with your database name, replace **username_here** with your database user, and replace **password_here** with your user's password. Save and exit the file.
+
+##### Move Wordpress Files
+
+```shell
+rsync -avP /usr/share/nginx/html/wordpress/ /usr/share/nginx/html/
+```
+
+We will use rsync to move the files along with their privileges and ownership on each file.
+
+##### Create Uploads Directory
+
+```shell
+mkdir /usr/share/nginx/html/wp-content/uploads
+```
+
+This directory will hold all files you'll ever upload.
+
+##### Restart Nginx And PHP
+
+```shell
+service nginx restart
+service php5-fpm restart
+```
+
+This should apply all of our changes and prepare our site to use the Wordpress installation by default.
 
 ___
 
-> ### 8. Playbook File
+> ### 7. Access And Configure Wordpress
 
-##### Create Playbook.yml
-
-In the root of your Ansible project, create a **playbook.yml** file and add the following text:
-
-```shell
----
-  - hosts: GROUP_NAME
-    become: true
-    user: root
-    roles:
-      - nginx
-      - node
-      - githook
-```
-
-This will actually execute our roles to run on every group's IPs in our **hosts** file.
-
-___
-
-> ### 9. Ansible Automation
-
-##### Run Ansible Playbook
-
-```shell
-ansible-playbook --private-key=~/.ssh/ID_NAME -i ./hosts playbook.yml
-```
-
-This will run our playbook and automate installing everything we need onto our servers. This may take a while to finish running, but you can watch the progress as it runs.
+Your Wordpress site should now be available! Visit **http://YOUR\_IP\_ADDRESS** and the Wordpress site configuration should appear. Now have fun customizing your own Wordpress site!
 
 ___
 
