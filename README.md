@@ -3,7 +3,7 @@
 
 This requires that you've followed the [setup.md guide](https://github.com/bbcharlton/DWA/blob/4d892cbebb893fd6d1958b83c7338656356c8215/setup.md). Before we start, here's a general diagram of how our workflow will go:
 
-[](http://imgur.com/a/t9sSH)
+![](http://imgur.com/a/t9sSH)
 
 ___
 
