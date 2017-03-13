@@ -1,5 +1,5 @@
-# Ubunutu 16.04/Wordpress Ansible Automation
-### Using Digital Ocean to spin up an Ubuntu server using MariaDB and PHP for a Wordpress website through Ansible's automated playbooks.
+# Ubunutu 16.04/Pipeline Ansible Automation
+### Using Digital Ocean to spin up an Ubuntu server that uses three different pipelines, HTML, Wordpress, and Node.
 ___
 
 > ### 1. Generate Your SSH Key
@@ -23,13 +23,33 @@ This outputs our public ssh key. Copy this key. We will need it for our Digital 
 
 ___
 
-> ### 2. Creating Your Droplet With SSH
+> ### 2. Setup Codeship App
 
-Sign in to your Digital Ocean account and go to your settings page. Click on **Security** and click the **Add SSH Key** button. Paste in your copied public key and give it a unique name. Save and go to the Droplets page. Customize how you want your Droplet to be. Be sure to use **Ubuntu 16.04 x64** for this specific setup. For the SSH option, click on the SSH key name you just added to your profile, and create.
+Create an account on [Codeship](https://codeship.com/) by connecting your Github account. Once logged in, create a new project and link your preferred Github repo. This will be the central point of our centralized workflow. Any commits pushed to this repo will then be deployed to our remote server. Select the Basic package for your account when prompted. 
+
+We'll now need the project's SSH key. To obtain it, go to your Codeship project's settings and click **General**. Scroll down and copy the SSH key.
 
 ___
 
-> ### 3. Install Ansible With Brew
+> ### 3. Creating Your Droplet With SSH
+
+Sign in to your Digital Ocean account and go to your settings page. Click on **Security** and click the **Add SSH Key** button. Paste in your copied Codeship public key as well as your personal ssh key and give them unique names. Save and go to the Droplets page. Customize how you want your Droplet to be. Be sure to use **Ubuntu 16.04 x64** for this specific setup. For the SSH option, click on the SSH key name you just added to your profile, and create.
+
+___
+
+> ### 4. Setup Deployment
+
+After creating your project, go to your project's settings and click **Deployment**. Set the branch to be used as **master**. Save and then you'll be directed to choose a deployment for your pipeline. Choose custom script and paste the following command:
+
+```shell
+rsync -avz -e "ssh" /home/rof/src/github.com/bbcharlton/CodeshipRepo root@YOUR_IP_ADDRESS:/var/www/html
+```
+
+This will be the command that will send the files we push to our Github branch to our remote server. 
+
+___
+
+> ### 5. Install Ansible With Brew
 
 ##### Install Brew
 
@@ -45,7 +65,7 @@ This installs Ansible globally on our local machine, which allows us to use it f
 
 ___
 
-> ### 4. Setup Ansible Directory
+> ### 6. Setup Ansible Directory
 
 ##### Prepare Ansible Directory
 
@@ -55,7 +75,7 @@ cd DIRECTORY_NAME
 nano hosts
 ```
 
-This creates our Ansible directory on our local machine. The host file will contain all of our server IPs listed in groups. Create a group by typing **[GROUP_NAME]** then list your server IP below it. Save and exit the file.
+This creates our Ansible directory. The host file will contain all of our server IPs listed in groups. Create a group by typing **[GROUP_NAME]** then list your server IP below it. Save and exit the file.
 
 ##### Install Python
 
@@ -71,11 +91,11 @@ We are required to use the raw module in order to get Python working on our Ansi
 ansible all -m ping -u root --private-key=~/.ssh/ID_NAME -i ./hosts
 ```
 
-We should now get a successful output from our server ping.
+We should now get two successful outputs from our server pings.
 
 ___
 
-> ### 4. Setup Ansible Files
+> ### 7. Setup Ansible Files
 
 ##### Prepare Ansible Files
 
@@ -84,6 +104,7 @@ mkdir roles
 cd roles
 mkdir nginx
 mkdir wordpress
+mkdir node
 ```
 
 These will be our roles running separate tasks. This creates the necessary file structure for Ansible to work. For each role, add the following folders:
@@ -106,27 +127,7 @@ The **main.yml** files will hold all of our functionality for Ansible's automati
 
 ___
 
-> ### 5. Nginx Role
-
-##### Files Folder
-
-For your **nginx** role, in the **files** folder, create a new file named **git-setup.sh** and paste the following text:
-
-```shell
-#!/bin/bash
-
-cd /var
-
-if [ ! -d /var/repo ]; then
-  mkdir repo && cd repo
-  git init --bare
-  cd hooks
-  touch post-receive
-  chmod +x post-receive
-  echo "#!/bin/bash" > post-receive
-  echo "git --work-tree=/var/www/html/wordpress --git-dir=/var/repo checkout -f" >> post-receive
-fi
-```
+> ### 8. Nginx Role
 
 ##### Handlers Folder
 
@@ -163,8 +164,6 @@ For your **nginx** role, in the **tasks** folder, paste the following text into 
 
 ```shell
 ---
-- script: ./git-setup.sh
-
 - name: Add Nginx Repo
   apt_repository: repo='ppa:nginx/stable' state=present
 
@@ -198,10 +197,10 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
 
-    root /var/www/html/wordpress;
-    index index.php index.html index.htm index.nginx-debian.html;
+    root /var/www/html/CodeshipRepo/html;
+    index index.html index.htm index.nginx-debian.html;
 
-    server_name localhost;
+    server_name html.{{ ip }}.xip.io;
 
     location / {
         try_files $uri $uri/ =404;
@@ -210,7 +209,27 @@ server {
     error_page 404 /404.html;
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
-        root /var/www/html/wordpress;
+        root /var/www/html;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+
+    root /var/www/html/CodeshipRepo/wordpress;
+    index index.php index.html index.htm index.nginx-debian.html;
+
+    server_name php.{{ ip }}.xip.io;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    error_page 404 /404.html;
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /var/www/html;
     }
 
     location ~ \.php$ {
@@ -222,9 +241,29 @@ server {
         include fastcgi_params;
     }
 }
+
+server {
+    listen 80;
+    listen [::]:80;
+
+    root /var/www/html/CodeshipRepo/node;
+    index index.html index.htm index.nginx-debian.html;
+
+    server_name node.{{ ip }}.xip.io;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+    }
+}
 ```
 
-This will be our Nginx root document that will allow our Wordpress files to be ran.
+##### Note: We will need to update this document's domain IP used later because automation will set both servers to one IP.
+
+This will be our Nginx root document that points to specific locations for our pipelines to work.
 
 ##### Vars Folder
 
@@ -232,6 +271,7 @@ For your **nginx** role, in the **vars** folder, paste the following text into i
 
 ```shell
 ---
+ip: YOUR_IP_ADDRESS
 domain: YOUR@DOMAIN_NAME
 ```
 
@@ -239,7 +279,7 @@ This domain variable should be the same as your **.j2** file's domain name.
 
 ___
 
-> ### 6. Wordpress Role
+> ### 9. Wordpress Role
 
 ##### Handlers Folder
 
@@ -251,7 +291,7 @@ For your **wordpress** role, in the **handlers** folder, paste the following tex
   service: name=php7.0-fpm state=restarted
 ```
 
-This will allow us to restart PHP. Our tasks will eventually call these handlers after certain events are fired.
+This will allow us to reload our PHP.
 
 ##### Meta Folder
 
@@ -262,17 +302,12 @@ For your **wordpress** role, in the **meta** folder, paste the following text in
 dependencies: []
 ```
 
-This allows the meta to store any dependencies.
-
 ##### Tasks Folder
 
 For your **wordpress** role, in the **tasks** folder, paste the following text into its **main.yml** file:
 
 ```shell
 ---
-- name: Add PHP Repo
-  apt_repository: repo='ppa:ondrej/php' state=present
-
 - name: Install PHP
   apt: pkg={{ item }} state=latest update_cache=true
   with_items:
@@ -291,11 +326,13 @@ For your **wordpress** role, in the **tasks** folder, paste the following text i
     - mariadb-server
     - python-mysqldb
 
+- command: mkdir /var/www/html/CodeshipRepo
+
 - name: Download WordPress
-  get_url: url=http://wordpress.org/wordpress-{{ wp_version }}.tar.gz dest=/var/www/html/wordpress-{{ wp_version }}.tar.gz
+  get_url: url=http://wordpress.org/wordpress-{{ wp_version }}.tar.gz dest=/var/www/html/CodeshipRepo/wordpress-{{ wp_version }}.tar.gz
 
 - name: Extract Wordpress Files
-  command: chdir=/var/www/html /bin/tar xvf wordpress-{{ wp_version }}.tar.gz creates=/var/www/html/wordpress
+  command: chdir=/var/www/html/CodeshipRepo /bin/tar xvf wordpress-{{ wp_version }}.tar.gz creates=/var/www/html/CodeshipRepo/wordpress
 
 - name: Create WordPress database
   mysql_db: name={{ wp_db_name }} state=present
@@ -304,14 +341,14 @@ For your **wordpress** role, in the **tasks** folder, paste the following text i
   mysql_user: name={{ wp_db_user }} password={{ wp_db_password }} priv={{ wp_db_name }}.*:ALL host='localhost' state=present
 
 - name: Copy WordPress config file
-  template: src=wp-config.php dest=/var/www/html/wordpress
+  template: src=wp-config.php dest=/var/www/html/CodeshipRepo/wordpress
 ```
 
-Tasks are the core functionality for Ansible's playbooks. This task will get Wordpress and MariaDB installed and running.
+This will do all the installation for our Wordpress site and Maria database.
 
 ##### Templates Folder
 
-For your **wordpress** role, in the **templates** folder, create a new file. Create a new file name **wp-config.php** and paste the following text:
+For your **wordpress** role, in the **templates** folder, create a new file named **wp-config.php** and paste the following text:
 
 ```shell
 <?php
@@ -380,11 +417,11 @@ if ( !defined('ABSPATH') )
 require_once(ABSPATH . 'wp-settings.php');
 ```
 
-This is the Wordpress config that connects to the Maria database.
+This is the config file we will be adding in to use our new Maria database.
 
 ##### Vars Folder
 
-For your **nginx** role, in the **vars** folder, paste the following text into its **main.yml** file:
+For your **wordpress** role, in the **vars** folder, paste the following text into its **main.yml** file:
 
 ```shell
 ---
@@ -396,11 +433,51 @@ auto_up_disable: false
 core_update_level: true
 ```
 
-These will be the variables for our Wordpress config file. You can change the Wordpress version, but **4.7.2** is recommended.
+This will be the information for our Maria database. You can change the Wordpress version to whichever version you prefer, but for this tutorial, **4.7.2** is recommended.
 
 ___
 
-> ### 7. Playbook File
+> ### 10. Node Role
+
+##### Files Folder
+
+For your **node** role, in the **files** folder, create a new file named **install-node.sh** and paste the following text:
+
+```shell
+#!/bin/bash
+
+cd ~
+
+if [ ! -d ~/nodesource_setup.sh ]; then
+  curl -sL https://deb.nodesource.com/setup_6.x -o nodesource_setup.sh
+  bash nodesource_setup.sh
+  apt-get install nodejs
+  apt-get install build-essential -y
+  npm install -g pm2
+fi
+```
+
+##### Meta Folder
+
+For your **node** role, in the **meta** folder, paste the following text into its **main.yml** file:
+
+```shell
+---
+dependencies: []
+```
+
+##### Tasks Folder
+
+For your **node** role, in the **tasks** folder, paste the following text into its **main.yml** file:
+
+```shell
+---
+- script: ./install-node.sh
+```
+
+___
+
+> ### 11. Playbook File
 
 ##### Create Playbook.yml
 
@@ -414,13 +491,14 @@ In the root of your Ansible project, create a **playbook.yml** file and add the 
     roles:
       - nginx
       - wordpress
+      - node
 ```
 
 This will actually execute our roles to run on every group's IPs in our **hosts** file.
 
 ___
 
-> ### 8. Ansible Automation
+> ### 12. Ansible Automation
 
 ##### Run Ansible Playbook
 
@@ -431,15 +509,3 @@ ansible-playbook --private-key=~/.ssh/ID_NAME -i ./hosts playbook.yml
 This will run our playbook and automate installing everything we need onto our servers. This may take a while to finish running, but you can watch the progress as it runs.
 
 ___
-
-> ### 9. Access And Configure Wordpress
-
-Your Wordpress site should now be available! Visit **http://YOUR\_IP\_ADDRESS** and the Wordpress site configuration should appear. Now have fun customizing your own Wordpress site!
-
-___
-
-
-
-
-
-
