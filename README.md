@@ -1,68 +1,99 @@
-# Centralized Workflow Deployment
+# Repo Deployment
 ### Deploying files to our servers.
-
-This guide requires that you've already followed the [setup guide](https://github.com/bbcharlton/DWA/blob/0c325e7a7121560e803177d471e3c9af5bdb55b9/setup.md).
 ___
 
-> ### 1. Clone Github Repo
+> ### 1. Local Directory Setup
 
-##### Pull Codeship Repo
+On your local machine, download the project repo from my [Github repo](https://github.com/bbcharlton/AnsibleProjectRepos). These files will hold the projects we will deploy. Unzip the file, move the folder to your preferred location, and go into the folder.
+
+##### Git Remote Setup
 
 ```shell
-mkdir DIRECTORY_NAME
-cd DIRECTORY_NAME
-git clone https://github.com/bbcharlton/CodeshipRepo.git
-git remote add origin https://github.com/bbcharlton/CodeshipRepo.git
+git init
+git remote add REMOTE root@YOUR_IP_ADDRESS:/var/repo
 ```
 
-Create a new directory on your local machine and clone the CodeshipRepo repo to have access to the files we'll be deploying.
+This initializes our folder as a working directory then creates the remote that we'll use to deploy our files.
 
-___
+##### Note: Use your Staging server's IP for the remote IP. You can also duplicate this, change the remote name, and use your Production server's IP to allow access to push to it. We are also using root as the user because we used Ansible to automate our servers.
 
-> ### 2. Make Changes
-
-##### Edit Repo Files
-
-You can now edit the repo's files. Once you're ready to send the new code to your remote server, just push to the Github repo.
+##### Deploy
 
 ```shell
 git add .
-git commit -m "COMMIT_MESSAGE"
+git commit -m "First commit"
 git push origin master
 ```
 
-This will then send the files to Github. When Github receives these changes, Codeship will spin up a build and test our code. If the build is successful, it will push the new files to our remote server.
+This will send our files to our remote server, which will then finalize our folder structure on the server.
 
-##### PM2 Start Node App
+##### Verify Deployment
 
 ```shell
 ssh root@YOUR_IP_ADDRESS
-cd /var/www/html/CodeshipRepo/node
-pm2 start server.js
+cd /var/www/html
 ```
 
-We require PM2 to keep our Node app running in the background, so we must start it up. Any changes it gets through Codeship will be applied live.
+We'll ssh into our server then should see our project folders: html and node.
 
 ___
 
-> ### 3. Centralized Workflow
+> ### 2. PM2 Start Our Projects
 
-##### Use Workflow
-
-We use Github as the central point of our workflow. We pull code from Github, edit the code, and push it back up. Codeship takes the new code from our Github repo and deploys it to our remote server. You can now access your sites at the following domains:
-
-* **http://html.YOUR\_IP\_ADDRESS.xip.io**
-* **http://node.YOUR\_IP\_ADDRESS.xip.io**
-* **http://php.YOUR\_IP\_ADDRESS.xip.io**
-* **http://YOUR\_IP\_ADDRESS**
-
-If your sites are not appearing, you may need to restart Nginx.
+##### Node Projects
 
 ```shell
-ssh root@YOUR_IP_ADDRESS
-systemctl restart nginx
+cd node
+cd proj3
+npm install
+npm install express-validator
+npm install pug
+pm2 start server.js
 ```
 
-This will restart Nginx and your sites should now be serving if they weren't previously.
+This will prepare the packages for our first Node application, then server it using PM2. We must npm install the packages first since we use .gitignore to prevent the transfer of the node_modules folder.
 
+```shell
+cd ..
+cd proj4
+pm2 start server.js
+```
+
+Since this Node app doesn't have any node modules, it just needs a simple pm2 start.
+
+___
+
+> ### 3. Visit Subdomains!
+
+##### HTML Subdomains
+
+We can now visit the following sites:
+
+* **html1.YOUR\_IP\_ADDRESS.xip.io**
+* **html2.YOUR\_IP\_ADDRESS.xip.io**
+
+And our two HTML projects should be loaded up!
+
+##### Node Subdomains
+
+We can now visit the following sites:
+
+* **node1.YOUR\_IP\_ADDRESS.xip.io**
+* **node2.YOUR\_IP\_ADDRESS.xip.io**
+
+And our two Node projects should be loaded up!
+
+___
+
+> ### 4. Use Workflow
+
+##### Edit Local Files
+
+Enter into the repo's folder that you pulled from my Github. Any time you edit any of the projects, you just have to be in the root of the repo file to use basic git workflow commands such as:
+
+```shell
+git add .
+git commit -m "YOUR MESSAGE"
+git push REMOTE master
+```
 ___
