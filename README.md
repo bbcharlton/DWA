@@ -1,5 +1,7 @@
 # Centralized Workflow Deployment
 ### Deploying files to our servers.
+
+This guide requires that you've already followed the [setup guide](https://github.com/bbcharlton/DWA/blob/0c325e7a7121560e803177d471e3c9af5bdb55b9/setup.md).
 ___
 
 > ### 1. Clone Github Repo
