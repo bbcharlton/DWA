@@ -1,101 +1,59 @@
-# Repo Deployment
-### Deploying files to our servers.
-
-This guide requires that you've followed the [setup guide](https://github.com/bbcharlton/DWA/blob/2e434cea72d1e3c046fa2bb5d2f69586f0b5576d/setup.md).
+# Continuous Integration Deployment
+### Using a centralized workflow to continuously integrate and deploy files from Github through Codeship to your server.
 ___
 
-> ### 1. Local Directory Setup
+> ### 1. Clone Github Repos
 
-On your local machine, download the project repo from my [Github repo](https://github.com/bbcharlton/AnsibleProjectRepos). These files will hold the projects we will deploy. Unzip the file, move the folder to your preferred location, and go into the folder.
-
-##### Git Remote Setup
+On your local machine clone down all of your Github project repos to your preferred destination. You will now be able to work locally on the files. For example:
 
 ```shell
-git init
-git remote add REMOTE root@YOUR_IP_ADDRESS:/var/repo
+git clone https://github.com/bbcharlton/StaticRepo1.git
 ```
-
-This initializes our folder as a working directory then creates the remote that we'll use to deploy our files.
-
-##### Note: Use your Staging server's IP for the remote IP. You can also duplicate this, change the remote name, and use your Production server's IP to allow access to push to it. We are also using root as the user because we used Ansible to automate our servers.
-
-##### Deploy
-
-```shell
-git add .
-git commit -m "First commit"
-git push origin master
-```
-
-This will send our files to our remote server, which will then finalize our folder structure on the server.
-
-##### Verify Deployment
-
-```shell
-ssh root@YOUR_IP_ADDRESS
-cd /var/www/html
-```
-
-We'll ssh into our server then should see our project folders: html and node.
 
 ___
 
-> ### 2. PM2 Start Our Projects
+> ### 2. Edit Project Files
+
+You can use Feature Branch Workflow to create feature branches and edit your projects. This will make sure you don't negatively affect your project if you make a mistake or if your code doesn't function the way you want it to.
+
+___
+
+> ### 3. Continuous Integration
+
+##### Build Test
+
+Now when you're ready to stage your commits and push, the files will be sent to Github. Since we setup Codeship to listen to our repos, it will grab the files and run the builds. You can watch the builds ran from the [projects page](https://app.codeship.com/projects) on Codeship. If a build fails, it will be red, if it passes, it's green. Each build can be reran at anytime. You will also receive an email about the results of the build.
+
+##### Build Success
+
+When a build succeeds, it will send our commit files to our servers. You can test that the files are in the right place by entering the server.
+
+```shell
+ssh root@YOUR_STAGING_IP
+ssh root@YOUR_PRODUCTION_IP
+```
 
 ##### Node Projects
 
+For any Node projects added to your server, you will need to go in and npm install its packages, then manually start them with PM2.
+
 ```shell
-cd node
-cd proj3
+ssh root@YOUR_IP_ADDRESS
+cd /var/www/html/PROJECT_REPO
 npm install
-npm install express-validator
-npm install pug
 pm2 start server.js
 ```
 
-This will prepare the packages for our first Node application, then server it using PM2. We must npm install the packages first since we use .gitignore to prevent the transfer of the node_modules folder.
-
-```shell
-cd ..
-cd proj4
-pm2 start server.js
-```
-
-Since this Node app doesn't have any node modules, it just needs a simple pm2 start.
+Now our Node apps will be running continuously in the background.
 
 ___
 
-> ### 3. Visit Subdomains!
+> ### 4. Visit Sites
 
-##### HTML Subdomains
-
-We can now visit the following sites:
-
-* **html1.YOUR\_IP\_ADDRESS.xip.io**
-* **html2.YOUR\_IP\_ADDRESS.xip.io**
-
-And our two HTML projects should be loaded up!
-
-##### Node Subdomains
-
-We can now visit the following sites:
-
-* **node1.YOUR\_IP\_ADDRESS.xip.io**
-* **node2.YOUR\_IP\_ADDRESS.xip.io**
-
-And our two Node projects should be loaded up!
-
-___
-
-> ### 4. Use Workflow
-
-##### Edit Local Files
-
-Enter into the repo's folder that you pulled from my Github. Any time you edit any of the projects, you just have to be in the root of the repo file to use basic git workflow commands such as:
+Now that we've used continuous integration to get put our repo projects through our pipelines, we can now visit our project sites at:
 
 ```shell
-git add .
-git commit -m "YOUR MESSAGE"
-git push REMOTE master
+http://PROJECT_NAME.YOUR_IP_ADDRESS.xip.io
 ```
+
 ___
