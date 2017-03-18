@@ -96,12 +96,13 @@ ___
 
 > ### 7. Ansible Automation Instruction
 
-The Ansible file structure has 4 roles:
+The Ansible file structure has 5 roles:
 
 * **server**
 * **nginx**
 * **node**
 * **wordpress**
+* **admin**
 
 > ##### 1. Server Role
 
@@ -154,18 +155,25 @@ pm2 start server.js
 
 > ##### 4. Wordpress Role
 
-This role is used to download and install Wordpress on the server. Along with Wordpress, it will also install MariaDB to store its data. It has a **vars** folder with a **main.yml** file. For the **project** variable, set its value to the exact name of your project repo you'll be adding. You can change the **wp_version** to any Wordpress version but 4.7.2 is recommended. Lastly, change the database variables to what you want your information to be. Here's an example of how your **main.yml** file should look like:
+This role is used to download and install Wordpress on the server. Along with Wordpress, it will also install MariaDB to store its data. It has a **vars** folder with a **main.yml** file. For the **project** variable, set its value to the exact name of your project repo you'll be adding. You can change the **wp_version** to any Wordpress version but 4.7.3 is recommended. This role will also create a database admin (DBA) that will only have access to managing our Wordpress database. Lastly, change the database variables to what you want your information to be. Here's an example of how your **main.yml** file should look like:
 
 ```shell
 ---
-project: WordpressRepo1
-wp_version: 4.7.2
+project:
+wp_version: 4.7.3
 wp_db_name: DATABASE_NAME
-wp_db_user: DATABASE_USERNAME
-wp_db_password: DATABASE_PASSWORD
+non_root_user: DATABASE_ADMIN_NAME
+non_root_password: DATABASE_ADMIN_PASSWORD
+ssh_public_key: DATABASE_ADMIN_SSH_KEY
 auto_up_disable: false
 core_update_level: true
 ```
+
+To create a new DBA with access to another database, specify in the **vars** folder in its **main.yml** file a new database name along with the new user's information.
+
+> ##### 5. Admin Role
+
+This role is used to create a non-root admin user. This user is added into the **sudo** group and has sudo root permissions. Be careful who you give permission to use sudo.
 
 ___
 
