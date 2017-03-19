@@ -171,11 +171,11 @@ core_update_level: true
 
 > ##### 5. CreateAdmin Role
 
-This role is used for creating admin users for the **sudo** group. These users are considered admins because they have root access through the sudo command. It has a **vars** folder with a **main.yml** file. For the variables, set the user's name and password and give it a ssh key to use to login.
+This role is used for creating admin users for the **sudo** group. These users are considered admins because they have root access through the sudo command. It has a **vars** folder with a **main.yml** file. For the variables, set the user's name and password and give it a ssh key to use to login. The user's password needs to be encrypted. Follow this [short guide](http://docs.ansible.com/ansible/faq.html#how-do-i-generate-crypted-passwords-for-the-user-module) on how to get an encrypted password.
 
 > ##### 6. CreateDBAdmin Role
 
-This role is used for managing databases. You must specify exactly which database this user can have access to. It has a **vars** folder with a **main.yml** file. For the variables, set the user's name and password and give it a ssh key to use to login. Then specify the name of the database they will have access to.
+This role is used for managing databases. You must specify exactly which database this user can have access to. It has a **vars** folder with a **main.yml** file. For the variables, set the user's name and password and give it a ssh key to use to login. Then specify the name of the database they will have access to. The user's password needs to be encrypted. Follow this [short guide](http://docs.ansible.com/ansible/faq.html#how-do-i-generate-crypted-passwords-for-the-user-module) on how to get an encrypted password.
 
 ___
 
