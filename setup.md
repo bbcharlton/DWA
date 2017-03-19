@@ -96,13 +96,14 @@ ___
 
 > ### 7. Ansible Automation Instruction
 
-The Ansible file structure has 5 roles:
+The Ansible file structure has 6 roles:
 
 * **server**
 * **nginx**
 * **node**
 * **wordpress**
-* **admin**
+* **createAdmin**
+* **createDBAdmin**
 
 > ##### 1. Server Role
 
@@ -121,7 +122,7 @@ project: StaticRepo1
 port:
 ```
 
-But in order for our Ansible automation to use the server document correctly, we must also rename it our project repo's name. For example, we have the **html** document as:
+But in order for our Ansible automation to use the server document correctly, we must also rename it our project repo's name. For example, we have the **html** document in our **templates** folder as:
 
 ```shell
 html-NAME
@@ -155,25 +156,26 @@ pm2 start server.js
 
 > ##### 4. Wordpress Role
 
-This role is used to download and install Wordpress on the server. Along with Wordpress, it will also install MariaDB to store its data. It has a **vars** folder with a **main.yml** file. For the **project** variable, set its value to the exact name of your project repo you'll be adding. You can change the **wp_version** to any Wordpress version but 4.7.3 is recommended. This role will also create a database admin (DBA) that will only have access to managing our Wordpress database. Lastly, change the database variables to what you want your information to be. Here's an example of how your **main.yml** file should look like:
+This role is used to download and install Wordpress on the server. Along with Wordpress, it will also install MariaDB to store its data. It has a **vars** folder with a **main.yml** file. For the **project** variable, set its value to the exact name of your project repo you'll be adding. You can change the **wp_version** to any Wordpress version but 4.7.3 is recommended. Lastly, change the database variables to what you want your information to be. Here's an example of how your **main.yml** file should look like:
 
 ```shell
 ---
-project:
+project: WordpressRepo1
 wp_version: 4.7.3
 wp_db_name: DATABASE_NAME
-non_root_user: DATABASE_ADMIN_NAME
-non_root_password: DATABASE_ADMIN_PASSWORD
-ssh_public_key: DATABASE_ADMIN_SSH_KEY
+wp_db_user: DATABASE_USERNAME
+wp_db_password: DATABASE_PASSWORD
 auto_up_disable: false
 core_update_level: true
 ```
 
-To create a new DBA with access to another database, specify in the **vars** folder in its **main.yml** file a new database name along with the new user's information.
+> ##### 5. CreateAdmin Role
 
-> ##### 5. Admin Role
+This role is used for creating admin users for the **sudo** group. These users are considered admins because they have root access through the sudo command. It has a **vars** folder with a **main.yml** file. For the variables, set the user's name and password and give it a ssh key to use to login.
 
-This role is used to create a non-root admin user. This user is added into the **sudo** group and has sudo root permissions. Be careful who you give permission to use sudo.
+> ##### 6. CreateDBAdmin Role
+
+This role is used for managing databases. You must specify exactly which database this user can have access to. It has a **vars** folder with a **main.yml** file. For the variables, set the user's name and password and give it a ssh key to use to login. Then specify the name of the database they will have access to.
 
 ___
 
@@ -187,14 +189,15 @@ ___
     become: true
     user: root
     roles:
-      - server
       - nginx
+      - server
       - node
       - wordpress
-      - github
+      - createAdmin
+      - createDBAdmin
 ```
 
-The playbook is what decided which roles you'll be applying to your servers. It's completeley modular, so if you want to add multiple server documents for your servers, simply just add the **server** role and refer to the section on its details above.
+The playbook is what decides which roles you'll be applying to your servers. It's completeley modular, so if you want to add multiple server documents for your servers, simply just add the **server** role and refer to the section on its details above.
 
 ___
 
