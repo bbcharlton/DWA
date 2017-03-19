@@ -1,5 +1,7 @@
 # Continuous Integration Deployment
 ### Using a centralized workflow to continuously integrate and deploy files from Github through Codeship to your server.
+
+This guide requires that you've already followed the [setup guide](https://github.com/bbcharlton/DWA/blob/a345cf2dba767f1f13d905ae9714d51369cf9b2a/setup.md).
 ___
 
 > ### 1. Clone Github Repos
